@@ -1,0 +1,391 @@
+===============================================================
+ SCRIPT DE PRÉSENTATION — AT4 Sujet 2
+ Remise en conformité de l'application libXYZ LOAN
+ 28 mai 2026 — Durée totale : ~20 minutes
+===============================================================
+
+RÉPARTITION DU TEMPS PAR INTERVENANT :
+  diegodudn  →  Slides 1, 2, 9 (planning), 10       ~5 min 30
+  orAAKLe    →  Slides 3, 4, 9 (specs)               ~5 min
+  rudyb      →  Slides 5, 8                           ~5 min
+  kevljn     →  Slides 6, 7                           ~4 min 30 + démos
+
+CONVENTIONS DU SCRIPT :
+  [→ ACTION]   = ce qu'il faut faire à l'écran (cliquer, montrer, etc.)
+  (pause)      = marquer une légère pause naturelle
+  Les transitions entre intervenants sont marquées clairement.
+
+===============================================================
+ SLIDE 1 — Page de titre
+ INTERVENANT : diegodudn (~1 min)
+===============================================================
+
+Bonjour à tous et merci de nous recevoir.
+
+Nous sommes une équipe de quatre développeurs mandatés pour auditer la sécurité
+d'une application web existante : la plateforme de gestion de livres et d'emprunts
+de la librairie XYZ.
+
+Je m'appelle [prénom], je suis Scrum Master sur ce projet, et je suis accompagné
+de [prénom d'orAAKLe], en charge de la revue de code, de [prénom de kevljn], qui
+a piloté les tests d'intrusion, et de [prénom de rudyb], responsable de l'analyse
+statique et du scoring des vulnérabilités.
+
+L'application qu'on a auditée tourne sous Django 5, Python 3.12, MySQL 8, derrière
+Apache, dans un container Docker. Elle est accessible en production à l'adresse
+exam-red.edu-jalm.fr.
+
+Notre mission : identifier les failles, les scorer, et vous proposer un plan de
+correction avant tout déploiement. C'est ce qu'on va vous présenter aujourd'hui.
+
+===============================================================
+ SLIDE 2 — Contexte & Organisation Agile
+ INTERVENANT : diegodudn (~2 min 30, démo Kanban incluse)
+===============================================================
+
+Pour commencer, un peu de contexte.
+
+La librairie XYZ a fait appel à une première équipe de développement qui a livré
+une version fonctionnelle de l'application. Le problème, c'est que cette version
+n'a jamais été auditée d'un point de vue sécurité avant d'être déployée. Notre
+équipe remplace la précédente, et notre priorité absolue était de savoir : est-ce
+qu'on peut déployer ça en production ? (pause)
+
+La réponse courte, vous la découvrirez en fin de présentation.
+
+Pour organiser notre travail, on a adopté une méthodologie Agile adaptée au
+contexte de l'examen. Concrètement, un sprint unique de quatre heures, découpé
+en itérations de quarante-cinq minutes, avec un Sprint Planning en ouverture,
+des points de synchro réguliers, et une Sprint Review avant la soutenance.
+
+Chacun avait un périmètre défini dès le départ. [orAAKLe] sur la revue de code
+et la sécurité Django. [kevljn] sur les tests manuels — injections, CSRF, pentest.
+[rudyb] sur l'analyse statique avec SonarCloud. Et moi sur la coordination et la
+gestion du projet.
+
+[→ Ouvrir le Kanban GitHub : github.com/m1d0b4n/BC4SJ2-PYTHON, onglet Projects]
+
+Tout notre suivi s'est fait ici, sur ce Kanban GitHub. Vous voyez les colonnes :
+HIGH pour les failles bloquantes, MEDIUM pour les corrections à faire sous trente
+jours, LOW pour le backlog qualité. Au total, on a créé et classifié plus de
+cinquante issues. Treize en HIGH, sept en MEDIUM, le reste en backlog.
+
+Ce tableau a été notre fil conducteur tout au long de l'audit. Chaque faille
+identifiée — que ce soit par la revue de code, SonarCloud ou le pentest — a
+immédiatement été tracée ici avec sa criticité et son responsable.
+
+Je passe maintenant la parole à [orAAKLe] pour la revue de code.
+
+===============================================================
+ SLIDE 3 — Revue de code : settings.py & Authentification
+ INTERVENANT : orAAKLe (~2 min)
+===============================================================
+
+Merci [diegodudn].
+
+Je vais vous présenter les résultats de la revue de code, et on va commencer par
+le fichier le plus critique de l'application : settings.py.
+
+[→ Montrer le fichier librairie/settings.py dans le repo GitHub — lignes 23, 26, 28, 94]
+
+Ligne 23, on trouve la SECRET_KEY Django. Elle est hardcodée en clair, directement
+dans le code source. Cette clé sert à signer tous les cookies, tous les tokens CSRF
+et toutes les sessions. Si un attaquant la connaît — et avec le mode debug activé,
+c'est facile —, il peut forger n'importe quelle session. Score CVSS : 9,1.
+
+Ligne 94, le mot de passe de la base de données MySQL. En clair. Pas de variable
+d'environnement, pas de secret manager : le mot de passe est là, dans le dépôt Git,
+accessible à tous ceux qui ont accès au code. CVSS 9,8. C'est la faille la plus
+critique de tout notre audit.
+
+Ligne 26, DEBUG est à True. En production, ça signifie que toute erreur retourne
+une page avec le code source des vues, les variables en mémoire, les routes de
+l'application et la version exacte de Django. [kevljn] vous montrera ça en pratique
+dans quelques minutes.
+
+Et ligne 28, ALLOWED_HOSTS est une liste vide. Aucun filtre sur les hôtes HTTP
+acceptés — c'est une porte ouverte aux attaques de type Host Header Injection.
+
+Côté authentification, le système est entièrement custom. Au lieu d'utiliser
+Django Auth natif, chaque vue vérifie manuellement session['user_id']. Ce n'est
+pas la bonne approche : c'est du code artisanal qui contourne toutes les protections
+que Django fournit nativement.
+
+===============================================================
+ SLIDE 4 — Revue de code : Module LOAN & livres
+ INTERVENANT : orAAKLe (~2 min)
+===============================================================
+
+Passons maintenant au cœur du périmètre demandé : le module LOAN.
+
+[→ Montrer loan/views.py dans le repo — mettre en évidence les lignes 11, 32, 70]
+
+La première chose qui saute aux yeux, c'est le décorateur @csrf_exempt posé sur
+les trois vues principales : loan, new_loan et return_loan. Ce décorateur désactive
+complètement la protection CSRF de Django. N'importe qui peut envoyer un POST à
+ces endpoints sans token valide. CVSS 8,8. Et comme vous le verrez, c'est
+exactement ce que [kevljn] a exploité.
+
+Ensuite, la vue loan() n'a pas de @login_required. Elle récupère user_id depuis
+la session, mais si la session est vide, elle retourne une liste vide au lieu de
+rediriger vers le login. Un utilisateur non authentifié accède à la page sans
+restriction.
+
+La vue return_loan() a un autre problème : elle ne vérifie pas que l'emprunt
+appartient à l'utilisateur courant. En connaissant un ID d'emprunt, on pourrait
+techniquement retourner le livre de quelqu'un d'autre.
+
+[→ Montrer books/views.py — add_book_view]
+
+Dans books/views.py, add_book_view() ne fait aucun contrôle de rôle. La seule
+condition d'accès, c'est d'être connecté. Résultat : un utilisateur standard peut
+ajouter des livres. [kevljn] a démontré ça en production avec un compte utilisateur
+classique.
+
+Et pour finir, dans sql/library.sql, les hashes bcrypt des mots de passe utilisateurs
+sont committés directement dans le dépôt. Même hashés, ces données n'ont rien à
+faire dans un dépôt Git.
+
+Je laisse la parole à [rudyb] pour l'analyse SonarCloud.
+
+===============================================================
+ SLIDE 5 — SonarCloud : Analyse statique
+ INTERVENANT : rudyb (~2 min 30, démo SonarCloud incluse)
+===============================================================
+
+Merci [orAAKLe].
+
+En parallèle de la revue manuelle, j'ai connecté le dépôt GitHub à SonarCloud
+pour une analyse statique automatique.
+
+[→ Ouvrir SonarCloud : sonarcloud.io, projet m1d0b4n_BC4SJ2-PYTHON, vue Overview]
+
+Le verdict est clair. Sur 1 400 lignes de code, SonarCloud donne une note E en
+sécurité. E, c'est la pire note possible. Quatre issues de sécurité ouvertes, trois
+en fiabilité, vingt-trois en maintenabilité. Et dix-huit Security Hotspots — des
+zones du code qui nécessitent une révision manuelle parce qu'elles présentent un
+risque potentiel que l'outil ne peut pas qualifier seul.
+
+[→ Cliquer sur "Issues" dans le menu gauche pour afficher la liste]
+
+Vous voyez ici les issues détaillées. Trois Blocker — le niveau maximal. Ils portent
+exactement sur ce qu'a identifié [orAAKLe] : la SECRET_KEY exposée dans settings.py
+à la ligne 23, et les deux hashes bcrypt dans library.sql. SonarCloud les a trouvés
+automatiquement, en quelques secondes, sans qu'on lui dise où chercher.
+
+On a ensuite deux issues High : des caractères illégaux — code point 10, c'est-à-
+dire un saut de ligne — dans des littéraux SQL. C'est une source potentielle
+d'injection.
+
+Les vingt-quatre issues Medium, c'est majoritairement de la qualité CSS et
+d'accessibilité : contraste insuffisant, sélecteurs dupliqués, attribut lang absent
+sur les balises HTML.
+
+Ce que je trouve important de souligner ici : SonarCloud a confirmé en quelques
+secondes les failles critiques que la revue manuelle avait trouvées en plusieurs
+minutes. Les deux approches se complètent. L'outil est rapide et exhaustif. La
+revue humaine permet de comprendre l'exploitabilité réelle.
+
+Ces 28 issues ont toutes été importées automatiquement dans notre Kanban GitHub
+et classifiées selon leur niveau de criticité.
+
+Je passe la parole à [kevljn] pour le pentest.
+
+===============================================================
+ SLIDE 6 — Pentest : 3 exploits confirmés en production
+ INTERVENANT : kevljn (~2 min 30, 3 démos/screenshots)
+===============================================================
+
+Merci [rudyb]. Après l'analyse statique, on est passé à l'attaque — au sens propre.
+
+J'ai conduit un pentest en boîte grise sur le serveur déployé, avec les identifiants
+fournis dans le sujet. Je vais vous montrer les trois exploits que j'ai réussi à
+exécuter directement en production.
+
+--- Premier exploit : fuite de code source ---
+
+[→ Montrer le screenshot de la page 500 sur /books/999/ OU naviguer sur exam-red.edu-jalm.fr/books/999/]
+
+Il suffit d'appeler une URL qui n'existe pas. Ici, /books/999/. Django répond avec
+une page d'erreur 500 qui contient : le code source complet de la vue, les variables
+locales en mémoire au moment de l'erreur, la liste de toutes les routes de
+l'application, la version exacte de Django — 5.0.6 — et l'adresse IP interne du
+serveur Docker : 10.250.0.5. En trente secondes, un attaquant a une cartographie
+complète de l'infrastructure. C'est une conséquence directe de DEBUG à True.
+
+--- Deuxième exploit : bypass CSRF sur la création d'emprunt ---
+
+[→ Montrer le screenshot de la console DevTools avec le fetch POST sans token CSRF]
+
+Depuis la console du navigateur, j'ai envoyé un POST vers /loan/new_loan/ sans
+csrfmiddlewaretoken — juste avec le cookie de session de marc@lord.com. Résultat :
+HTTP 302, redirection vers /loan/. L'emprunt a été créé. Le livre "PHP et MySql
+pour les Nuls" est passé en statut emprunté. La protection CSRF n'existe tout
+simplement plus, grâce au @csrf_exempt qu'[orAAKLe] vous a montré.
+
+--- Troisième exploit : élévation de privilèges ---
+
+[→ Montrer le screenshot de la liste des livres avec "XSS<script>alert(1)</script>" et "USER_HACKED"]
+
+Avec ce même compte utilisateur standard — marc@lord.com, rôle "utilisateur",
+pas admin — j'ai posté vers /books/add/. Réponse : HTTP 302. Le livre "USER_HACKED"
+est apparu dans la liste publique, visible par tous. Et en bonus, j'ai pu stocker
+un titre avec une balise script — elle s'affiche dans la liste, preuve que le XSS
+stocké est possible. Aucun contrôle de rôle dans add_book_view().
+
+===============================================================
+ SLIDE 7 — OWASP PTK & Ce que l'appli bloque
+ INTERVENANT : kevljn (~2 min)
+===============================================================
+
+En complément du pentest manuel, l'outil OWASP PTK a effectué un scan automatique
+DAST et IAST sur le même serveur.
+
+Le scan IAST a détecté sept vulnérabilités HIGH, toutes liées au même problème :
+Bootstrap insère location.pathname dans le DOM via des mutations JavaScript sans
+aucune sanitisation. On appelle ça du DOM XSS. Les pages touchées sont /books/1/,
+/books/4/, les pages d'édition, /loan/, /accounts/profile et /accounts/edit_profile.
+CVSS 6,1, CWE-79. En pratique, si un attaquant parvient à contrôler une partie du
+chemin d'URL, il peut injecter du JavaScript dans la page.
+
+Le scan DAST a relevé une vulnérabilité MEDIUM : le traceback Python sur
+/books/4/delete/ — c'est le même problème de DEBUG que j'ai exploité. Et sept LOW
+liées aux headers manquants : Content-Security-Policy, HSTS, Referrer-Policy.
+
+À noter aussi : le cookie csrftoken n'a pas l'attribut HttpOnly. Un script
+JavaScript peut donc lire ce cookie directement, ce qui amplifie le risque XSS.
+
+Maintenant, ce que l'application bloque correctement — parce que ce n'est pas que
+du négatif. Les requêtes POST sans session retournent bien un 403 Forbidden : le
+middleware CSRF de Django fonctionne pour toutes les routes qui ne portent pas
+@csrf_exempt. Les requêtes SQL sont paramétrées avec %s, donc résistantes à
+l'injection SQL directe. Aucune donnée sensible n'est stockée côté client. Et
+aucune dépendance à risque élevé n'a été détectée.
+
+Je passe la parole à [rudyb] pour la synthèse globale.
+
+===============================================================
+ SLIDE 8 — Synthèse CVSS & Mapping OWASP Top 10
+ INTERVENANT : rudyb (~2 min 30)
+===============================================================
+
+Merci [kevljn].
+
+On va maintenant consolider l'ensemble des vulnérabilités identifiées — revue de
+code, SonarCloud, pentest et scan PTK — dans une synthèse unique.
+
+Au total : trente failles. Dix HIGH, six MEDIUM, quatorze LOW.
+
+Les scores CVSS les plus élevés, dans l'ordre. Le mot de passe de la base de
+données en clair : CVSS 9,8. C'est le score maximum de notre audit — si quelqu'un
+accède au code source, il a accès à toute la base. La SECRET_KEY hardcodée : 9,1.
+Le @csrf_exempt sur le module LOAN : 8,8, confirmé par le pentest de [kevljn].
+L'absence de contrôle de rôle dans add_book : 8,1, également confirmé en production.
+
+Si on fait le mapping avec l'OWASP Top 10 2025, voici comment ça se répartit.
+
+Quatre failles en A01 — Broken Access Control. C'est le domaine le plus représenté :
+@csrf_exempt, absence de login_required, absence de contrôle de rôle, système
+d'authentification custom. CVSS max 8,8.
+
+Trois failles en A02 — Cryptographic Failures. C'est le plus critique en termes
+de score : SECRET_KEY, password DB, hashes bcrypt committés. CVSS max 9,8.
+
+Deux failles A03 pour l'injection, principalement le DOM XSS Bootstrap. Sept failles
+A05 — Security Misconfiguration — pour le DEBUG, les headers manquants, les
+informations exposées dans les erreurs.
+
+Ce tableau de synthèse permet de prioriser l'action. Trente failles, ça peut
+paraître beaucoup. Mais les dix HIGH représentent les urgences réelles, et parmi
+elles, sept sont absolument bloquantes avant tout déploiement. Les vingt autres
+peuvent être planifiées.
+
+Je laisse [orAAKLe] nous présenter les spécifications reformulées, puis [diegodudn]
+prendra le planning.
+
+===============================================================
+ SLIDE 9 — Specs reformulées & Planning sprint
+ PARTIE 1 : orAAKLe (~1 min)
+ PARTIE 2 : diegodudn (~1 min)
+===============================================================
+
+--- [orAAKLe] ---
+
+Suite aux failles identifiées, on a reformulé les spécifications techniques des
+composants testés. Concrètement, voilà ce que la version corrigée doit garantir.
+
+Pour le module LOAN : toutes les vues doivent utiliser @login_required de Django
+Auth natif — le système de session custom est abandonné. Le CRUD livres est
+strictement réservé aux utilisateurs dont request.user.is_staff est True. Tous
+les endpoints LOAN ont la protection CSRF active — le @csrf_exempt disparaît.
+
+Pour la configuration : SECRET_KEY, mot de passe DB et ALLOWED_HOSTS migrent vers
+un fichier .env, aucune de ces valeurs ne reste dans le code. DEBUG passe à False
+avec des pages d'erreur génériques. Les cookies de session reçoivent les flags
+Secure, HttpOnly et SameSite=Lax.
+
+Ce sont des spécifications non négociables avant déploiement.
+
+--- [diegodudn] ---
+
+Sur le plan du planning, on a structuré les correctifs en deux sprints.
+
+Le sprint urgence couvre les sept corrections bloquantes à réaliser dans les sept
+prochains jours. Dans l'ordre de priorité : déplacer les secrets dans .env, passer
+DEBUG à False avec un handler d'erreur générique, supprimer @csrf_exempt sur les
+vues LOAN, ajouter @login_required, configurer ALLOWED_HOSTS, ajouter le contrôle
+de rôle admin, et migrer vers Django Auth natif. Ces sept corrections font passer
+le niveau de risque de critique à modéré.
+
+Le sprint deux, sur trente jours : suppression des hashes dans les fichiers SQL,
+ajout du header Content-Security-Policy, activation de HSTS, et mise en place de
+HttpOnly sur les cookies.
+
+Le backlog qualité — accessibilité HTML, contraste CSS, sélecteurs dupliqués —
+sera traité hors de la fenêtre critique.
+
+===============================================================
+ SLIDE 10 — Conclusion
+ INTERVENANT : diegodudn (~1 min 30)
+===============================================================
+
+Pour conclure.
+
+Avant notre intervention : trois exploits réussis directement en production, un
+score CVSS maximum de 9,8, une note E en sécurité sur SonarCloud. L'application
+n'est pas déployable en l'état.
+
+Après le sprint d'urgence de sept jours : les failles bloquantes sont corrigées,
+aucune credential n'est en clair dans le code, CSRF et authentification sont
+correctement gérés. L'application devient déployable.
+
+Ce projet nous a confirmé quelque chose d'important : les failles les plus critiques
+ne sont pas toujours les plus complexes. Des credentials en clair, un mode debug
+laissé activé, un décorateur mal compris — voilà ce qui met une application en
+danger. L'OWASP Top 10 existe précisément pour documenter ces erreurs élémentaires
+qui reviennent encore et encore.
+
+Notre démarche — Kanban GitHub, SonarCloud, OWASP PTK, pentest manuel — nous a
+permis de couvrir l'ensemble du périmètre de manière structurée et traçable. Toutes
+nos issues, tous nos findings, sont documentés sur le dépôt m1d0b4n/BC4SJ2-PYTHON.
+
+Nous sommes maintenant disponibles pour vos questions.
+
+Merci.
+
+===============================================================
+ FIN DU SCRIPT
+===============================================================
+
+RÉCAPITULATIF TEMPS PAR INTERVENANT (avec démos) :
+  diegodudn  →  Slide 1 (1 min) + Slide 2 (2 min 30) + Slide 9-planning (1 min) + Slide 10 (1 min 30)  =  6 min
+  orAAKLe    →  Slide 3 (2 min) + Slide 4 (2 min) + Slide 9-specs (1 min)                               =  5 min
+  rudyb      →  Slide 5 (2 min 30) + Slide 8 (2 min 30)                                                 =  5 min
+  kevljn     →  Slide 6 (2 min 30) + Slide 7 (2 min)                                                    =  4 min 30
+                                                                                   TOTAL                 = ~20 min 30
+
+NOTES POUR LES DÉMOS (à anticiper) :
+  Slide 2  →  Kanban GitHub ouvert en avance dans un onglet
+  Slide 5  →  SonarCloud ouvert en avance dans un onglet (vue Overview + Issues)
+  Slide 6  →  Screenshots dans le PPT OU onglet exam-red.edu-jalm.fr prêt
+              Console DevTools ouverte sur /loan/new_loan/ si démo live
