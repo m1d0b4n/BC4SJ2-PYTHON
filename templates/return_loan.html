@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block header %} <h1>Retour d'emprunt - Librairie XYZ</h1> {% endblock %}
+
+{% block content %}
+
+    <form method="post">
+        {{ form.as_p }}
+        <button type="submit">Retourner</button>
+    </form>
+    <button onclick="window.location.href ='{% url 'loan' %}'">Voir mes emprunts</button>
+    <button onclick="window.location.href ='{% url 'home' %}'">Retour à l'accueil</button>
+{% endblock %}

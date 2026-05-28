@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block title %}Profil de l'Utilisateur{% endblock %}
+
+{% block header %} <h1>Mon profil - Librairie XYZ</h1> {% endblock %}
+
+{% block content %}
+    <p>Prénom : {{ user.0 }}</p>
+    <p>Nom : {{ user.1 }}</p>
+    <p>Email : {{ user.2 }}</p>
+    <button onclick="window.location.href ='{% url 'edit_profile' %}'">Modifier le Profil</button>
+    <button onclick="window.location.href ='{% url 'home' %}'">Retour à l'accueil</button>
+{% endblock %}

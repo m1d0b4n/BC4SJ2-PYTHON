@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Détails du Livre</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+    <style>
+        .book-image {
+            max-width: 30%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Détails du Livre</h1>
+    </header>
+    <div class="container">
+        <div class="details">
+            <h3>{{ book.1 }}</h3>
+            <img class="book-image" src="{{ book.7 }}" alt="{{ book.1 }}">
+            <p>Auteur : {{ book.2 }}</p>
+            <p>Année de publication : {{ book.3 }}</p>
+            <p>ISBN : {{ book.4 }}</p>
+            <p>URL de l'image : {{ book.7 }}</p>
+        </div>
+        <div class="back-button">
+            <button onclick="window.location.href = '{% url 'books' %}'">Retour à la liste des livres</button>
+
+            {% if request.session.is_admin %}
+                <button onclick="window.location.href = '{% url 'edit_book' book.0 %}'">Modifier le livre</button>
+                <button onclick="showDeleteConfirmation({{ book.0 }})">Supprimer le livre</button>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+        function showDeleteConfirmation(bookId) {
+            if (confirm("Êtes-vous sûr de vouloir supprimer ce livre ?")) {
+                window.location.href = "{% url 'delete_book' book.0 %}";
+            }
+        }
+    </script>
+</body>
+</html>

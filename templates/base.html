@@ -1,0 +1,32 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %} - Librairie XYZ{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header>{% block header %}{% endblock %}</header>
+    <div id="rowDisplay">
+        <nav id="sidebar">
+            <ul>
+                {% if request.session.is_authenticated %}
+                    <li>Bonjour {{ request.session.username }}</li>
+                    <li><a href="{% url 'books' %}">Voir la liste des livres</a></li>
+                    <li><a href="{% url 'loan' %}">Voir la liste des emprunts</a></li>
+                    <li><a href="{% url 'profile' %}">Mon profil</a></li>
+                    <li><a href="{% url 'logout' %}">Deconnexion</a></li>
+                {% else %}
+                    <li><a href="{% url 'login' %}">Connexion</a></li>
+                    <li><a href="{% url 'register' %}">Inscription</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% include 'footer.html' %}
+</body>
+</html>

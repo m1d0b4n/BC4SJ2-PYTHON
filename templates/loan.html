@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block header %} <h1>Liste des Emprunts - Librairie XYZ</h1> {% endblock %}
+
+{% block content %}
+    <table>
+        <tr>
+            <th>Livre</th>
+            <th>Date d'emprunt</th>
+            <th>Date de retour prévue</th>
+            <th>Date de retour effectif</th>
+        </tr>
+        {% for emprunt in emprunts %}
+            <tr>
+                <td>{{ emprunt.titre }}</td>
+                <td>{{ emprunt.date_emprunt }}</td>
+                <td>{{ emprunt.date_retour_prevue }}</td>
+                <td>{{ emprunt.date_retour_effectif }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <div id="alerte" style="display: none; background-color: yellow; text-align: center;">
+        Attention : Vous détenez un livre depuis plus de 30 jours. Merci de le retourner dès que possible.
+    </div>
+
+    <button onclick="window.location.href ='{% url 'home' %}'">Retour à l'accueil</button>
+    <button onclick="window.location.href ='{% url 'new_loan' %}'">Effectuer un nouvel emprunt</button>
+    {% if emprunts %}
+        <button onclick="window.location.href ='{% url 'return_loan' %}'">Effectuer un retour</button>
+    {% endif %}
+<script>
+    // Boucle à travers les emprunts et affiche l'alerte si nécessaire
+    {% for emprunt in emprunts %}
+        {% if emprunt.duree_detention.days > 30 %}
+            document.getElementById('alerte').style.display = 'block';
+        {% endif %}
+    {% endfor %}
+</script>
+{% endblock %}

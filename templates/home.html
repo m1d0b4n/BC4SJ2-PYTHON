@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Accueil{% endblock %}
+
+{% block header %} <h1>Bienvenue sur Librairie XYZ</h1> {% endblock %}
+
+
+{% block content %}
+    <div id="content">
+        <h1>Dashboard</h1>
+        <div class="container">
+            <div class="statistic">
+                <h3>Total des Livres</h3>
+                <p>{{ books_count }}</p>
+            </div>
+            <div class="statistic">
+                <h3>Utilisateurs Enregistrés</h3>
+                <p>{{ users_count }}</p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

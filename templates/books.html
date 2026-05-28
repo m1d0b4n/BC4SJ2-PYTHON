@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Liste des Livres - Librairie XYZ{% endblock %}
+
+{% block header %} <h1>Liste des Livres - Librairie XYZ</h1> {% endblock %}
+
+
+{% block content %}
+    <table>
+        <tr>
+            <th>Image</th>
+            <th>Titre</th>
+            <th>Auteur</th>
+            <th>Date de publication</th>
+            <th>Statut</th>
+            <th>Détails</th>
+        </tr>
+    {% for book in books %}
+    <tr>
+        <td><img class="book-image" src="{{ book.7 }}" alt="{{ book.1 }}"/></td>
+        <td>{{ book.1 }}</td>
+        <td>{{ book.2 }}</td>
+        <td>{{ book.3 }}</td>
+        <td>{{ book.6 }}</td>
+        <td><a href="{% url 'book_detail' book.0 %}">Détails</a></td>
+    </tr>
+    {% empty %}
+        <tr>
+            <td colspan="6">Erreur lors de la récupération des livres.</td>
+        </tr>
+    {% endfor %}
+    </table>
+{% endblock %}

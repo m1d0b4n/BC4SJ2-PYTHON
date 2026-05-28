@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Modifier le Profil{% endblock %}
+
+{% block header %} <h1>Modifier votre profil - Librairie XYZ</h1> {% endblock %}
+
+{% block content %}
+    <form method="post">
+        {% csrf_token %}
+        <label for="new_name">Nouveau Nom :</label>
+        <input type="text" name="new_name" required>
+        <br>
+        <label for="new_email">Nouvel Email :</label>
+        <input type="email" name="new_email" required>
+        <br>
+        <!-- Ajoutez d'autres champs à mettre à jour ici -->
+        <button type="submit">Enregistrer les Modifications</button>
+    </form>
+    <button onclick="window.location.href ='{% url 'profile' %}'">Retour au Profil</button>
+    <button onclick="window.location.href ='{% url 'home' %}'">Retour à l'accueil</button>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block header %} <h1>Modifier un livre - Librairie XYZ</h1> {% endblock %}
+
+{% block content %}
+    {{ form.errors }}
+    <form method="post">
+        {% csrf_token %}
+        <label for="id_title">Titre :</label>
+        {{ form.title }}
+        <br>
+        <label for="id_author">Auteur :</label>
+        {{ form.author }}
+        <br>
+        <label for="id_description">Description :</label>
+        {{ form.description }}
+        <br>
+        <label for="id_date_publication">Date de Publication :</label>
+        {{ form.date_publication }}
+        <br>
+        <label for="id_isbn">ISBN :</label>
+        {{ form.isbn }}
+        <br>
+        <label for="id_cover">URL de l'image :</label>
+        {{ form.cover }}
+        <br>
+        <button type="submit">Enregistrer les Modifications</button>
+    </form>
+    <button onclick="window.location.href ='{% url 'books' %}'">Retour à la Liste des Livres</button>
+{% endblock %}
