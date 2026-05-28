@@ -74,7 +74,7 @@ Ce tableau a été notre fil conducteur tout au long de l'audit. Chaque faille
 identifiée — que ce soit par la revue de code, SonarCloud ou le pentest — a
 immédiatement été tracée ici avec sa criticité et son responsable.
 
-Je passe maintenant la parole à [orAAKLe] pour la revue de code.
+On va vous présenter 4 failles critiques dans l'application.
 
 ===============================================================
  SLIDE 3 — Revue de code : settings.py & Authentification
@@ -83,7 +83,7 @@ Je passe maintenant la parole à [orAAKLe] pour la revue de code.
 
 [→ Montrer le fichier librairie/settings.py dans le repo GitHub — lignes 23, 26, 28, 94]
 
---- [diegodudn] : SECRET_KEY hardcodée ---
+--- [rudyb] : SECRET_KEY hardcodée ---
 
 On commence par la revue de code, et je prends la première vulnérabilité : la
 SECRET_KEY Django, ligne 23 de settings.py. Elle est hardcodée en clair,
@@ -91,14 +91,14 @@ directement dans le dépôt Git. Cette clé sert à signer tous les cookies, tou
 les tokens CSRF et toutes les sessions. Si un attaquant la récupère, il peut
 forger n'importe quelle session utilisateur. CVSS 9,1.
 
---- [orAAKLe] : Mot de passe de la base de données ---
+--- [kevljn] : Mot de passe de la base de données ---
 
 Moi je prends la ligne 94 : le mot de passe MySQL, en clair dans le code source.
 Pas de variable d'environnement, pas de secret manager. Quiconque a accès au
 repo a accès à la base de données entière. CVSS 9,8 — c'est le score le plus
 élevé de tout notre audit.
 
---- [rudyb] : DEBUG & ALLOWED_HOSTS ---
+--- [diegodudn] : DEBUG & ALLOWED_HOSTS ---
 
 Je prends les lignes 26 et 28. DEBUG est à True en production : toute erreur
 retourne le code source complet, les variables en mémoire et la version exacte
@@ -106,7 +106,7 @@ de Django — [kevljn] vous le démontrera dans quelques minutes. Et ALLOWED_HOS
 est vide : aucun filtre sur les hôtes HTTP acceptés, porte ouverte aux attaques
 Host Header Injection.
 
---- [kevljn] : Système d'authentification custom ---
+--- [orAAKLe] : Système d'authentification custom ---
 
 Ma vulnérabilité : le système d'auth entièrement custom. Au lieu d'utiliser
 Django Auth natif, chaque vue vérifie manuellement session['user_id']. Ce code
