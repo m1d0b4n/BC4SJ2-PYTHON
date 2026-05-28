@@ -4,10 +4,10 @@
 
 | Membre GitHub | Rôle |
 |---------------|------|
-| `diegodudn` | Dev / Revue de code & sécurité Django |
+| `diegodudn` | Scrum Master / Coordination & rédaction rapport |
 | `kevljn` | Dev / Tests manuels (pentest, injection, XSS) |
-| `orAAKLe` | Dev / Analyse statique SonarQube & qualité |
-| `rudyb` | Scrum Master / Coordination & rédaction rapport |
+| `orAAKLe` | Dev / Revue de code & sécurité Django |
+| `rudyb` | Dev / Analyse statique SonarQube & qualité |
 
 ---
 
@@ -89,17 +89,17 @@ Selon le sujet, les fichiers prioritaires sont :
 
 | Fichier | Responsable suggéré |
 |---------|---------------------|
-| `librairie/settings.py` | `orAAKLe` |
-| `librairie/urls.py` | `diegodudn` |
+| `librairie/settings.py` | `rudyb` |
+| `librairie/urls.py` | `orAAKLe` |
 | `loan/views.py` | `kevljn` |
 | `loan/forms.py` | `kevljn` |
-| `loan/models.py` | `diegodudn` |
-| `templates/loan.html` | `orAAKLe` |
-| `templates/new_loan.html` | `orAAKLe` |
-| `templates/return_loan.html` | `orAAKLe` |
-| `templates/base.html` | `rudyb` |
-| `templates/footer.html` | `rudyb` |
-| `home/views.py` | `diegodudn` |
+| `loan/models.py` | `orAAKLe` |
+| `templates/loan.html` | `rudyb` |
+| `templates/new_loan.html` | `rudyb` |
+| `templates/return_loan.html` | `rudyb` |
+| `templates/base.html` | `diegodudn` |
+| `templates/footer.html` | `diegodudn` |
+| `home/views.py` | `orAAKLe` |
 
 ---
 
