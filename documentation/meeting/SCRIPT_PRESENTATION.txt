@@ -5,10 +5,10 @@
 ===============================================================
 
 RÉPARTITION DU TEMPS PAR INTERVENANT :
-  diegodudn  →  Slides 1, 2, 9 (planning), 10       ~5 min 30
-  orAAKLe    →  Slides 3, 4, 9 (specs)               ~5 min
-  rudyb      →  Slides 5, 8                           ~5 min
-  kevljn     →  Slides 6, 7                           ~4 min 30 + démos
+  diegodudn  →  Slides 1, 2, 3 (SECRET_KEY), 9 (planning), 10   ~6 min
+  orAAKLe    →  Slides 3 (DB password), 4, 9 (specs)             ~5 min
+  rudyb      →  Slides 3 (DEBUG), 5, 8                           ~5 min 30
+  kevljn     →  Slides 3 (Auth), 6, 7                            ~5 min + démos
 
 CONVENTIONS DU SCRIPT :
   [→ ACTION]   = ce qu'il faut faire à l'écran (cliquer, montrer, etc.)
@@ -78,45 +78,48 @@ Je passe maintenant la parole à [orAAKLe] pour la revue de code.
 
 ===============================================================
  SLIDE 3 — Revue de code : settings.py & Authentification
- INTERVENANT : orAAKLe (~2 min)
+ INTERVENANTS : diegodudn / orAAKLe / rudyb / kevljn (~30 s chacun)
 ===============================================================
-
-Merci [diegodudn].
-
-Je vais vous présenter les résultats de la revue de code, et on va commencer par
-le fichier le plus critique de l'application : settings.py.
 
 [→ Montrer le fichier librairie/settings.py dans le repo GitHub — lignes 23, 26, 28, 94]
 
-Ligne 23, on trouve la SECRET_KEY Django. Elle est hardcodée en clair, directement
-dans le code source. Cette clé sert à signer tous les cookies, tous les tokens CSRF
-et toutes les sessions. Si un attaquant la connaît — et avec le mode debug activé,
-c'est facile —, il peut forger n'importe quelle session. Score CVSS : 9,1.
+--- [diegodudn] : SECRET_KEY hardcodée ---
 
-Ligne 94, le mot de passe de la base de données MySQL. En clair. Pas de variable
-d'environnement, pas de secret manager : le mot de passe est là, dans le dépôt Git,
-accessible à tous ceux qui ont accès au code. CVSS 9,8. C'est la faille la plus
-critique de tout notre audit.
+On commence par la revue de code, et je prends la première vulnérabilité : la
+SECRET_KEY Django, ligne 23 de settings.py. Elle est hardcodée en clair,
+directement dans le dépôt Git. Cette clé sert à signer tous les cookies, tous
+les tokens CSRF et toutes les sessions. Si un attaquant la récupère, il peut
+forger n'importe quelle session utilisateur. CVSS 9,1.
 
-Ligne 26, DEBUG est à True. En production, ça signifie que toute erreur retourne
-une page avec le code source des vues, les variables en mémoire, les routes de
-l'application et la version exacte de Django. [kevljn] vous montrera ça en pratique
-dans quelques minutes.
+--- [orAAKLe] : Mot de passe de la base de données ---
 
-Et ligne 28, ALLOWED_HOSTS est une liste vide. Aucun filtre sur les hôtes HTTP
-acceptés — c'est une porte ouverte aux attaques de type Host Header Injection.
+Moi je prends la ligne 94 : le mot de passe MySQL, en clair dans le code source.
+Pas de variable d'environnement, pas de secret manager. Quiconque a accès au
+repo a accès à la base de données entière. CVSS 9,8 — c'est le score le plus
+élevé de tout notre audit.
 
-Côté authentification, le système est entièrement custom. Au lieu d'utiliser
-Django Auth natif, chaque vue vérifie manuellement session['user_id']. Ce n'est
-pas la bonne approche : c'est du code artisanal qui contourne toutes les protections
-que Django fournit nativement.
+--- [rudyb] : DEBUG & ALLOWED_HOSTS ---
+
+Je prends les lignes 26 et 28. DEBUG est à True en production : toute erreur
+retourne le code source complet, les variables en mémoire et la version exacte
+de Django — [kevljn] vous le démontrera dans quelques minutes. Et ALLOWED_HOSTS
+est vide : aucun filtre sur les hôtes HTTP acceptés, porte ouverte aux attaques
+Host Header Injection.
+
+--- [kevljn] : Système d'authentification custom ---
+
+Ma vulnérabilité : le système d'auth entièrement custom. Au lieu d'utiliser
+Django Auth natif, chaque vue vérifie manuellement session['user_id']. Ce code
+artisanal contourne toutes les protections intégrées de Django — et c'est ce
+qui m'a permis, lors du pentest, de naviguer entre rôles sans déclencher la
+moindre alerte.
 
 ===============================================================
  SLIDE 4 — Revue de code : Module LOAN & livres
  INTERVENANT : orAAKLe (~2 min)
 ===============================================================
 
-Passons maintenant au cœur du périmètre demandé : le module LOAN.
+Passons maintenant au module LOAN, cœur du périmètre demandé.
 
 [→ Montrer loan/views.py dans le repo — mettre en évidence les lignes 11, 32, 70]
 
@@ -378,11 +381,11 @@ Merci.
 ===============================================================
 
 RÉCAPITULATIF TEMPS PAR INTERVENANT (avec démos) :
-  diegodudn  →  Slide 1 (1 min) + Slide 2 (2 min 30) + Slide 9-planning (1 min) + Slide 10 (1 min 30)  =  6 min
-  orAAKLe    →  Slide 3 (2 min) + Slide 4 (2 min) + Slide 9-specs (1 min)                               =  5 min
-  rudyb      →  Slide 5 (2 min 30) + Slide 8 (2 min 30)                                                 =  5 min
-  kevljn     →  Slide 6 (2 min 30) + Slide 7 (2 min)                                                    =  4 min 30
-                                                                                   TOTAL                 = ~20 min 30
+  diegodudn  →  Slide 1 (1 min) + Slide 2 (2 min 30) + Slide 3-SECRET_KEY (30 s) + Slide 9-planning (1 min) + Slide 10 (1 min 30)  =  ~6 min 30
+  orAAKLe    →  Slide 3-DB password (30 s) + Slide 4 (2 min) + Slide 9-specs (1 min)                                                 =  ~3 min 30
+  rudyb      →  Slide 3-DEBUG (30 s) + Slide 5 (2 min 30) + Slide 8 (2 min 30)                                                       =  ~5 min 30
+  kevljn     →  Slide 3-Auth (30 s) + Slide 6 (2 min 30) + Slide 7 (2 min)                                                           =  ~5 min
+                                                                                                                        TOTAL          = ~20 min 30
 
 NOTES POUR LES DÉMOS (à anticiper) :
   Slide 2  →  Kanban GitHub ouvert en avance dans un onglet
